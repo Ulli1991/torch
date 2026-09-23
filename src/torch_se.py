@@ -13,6 +13,7 @@ Includes subroutines to
 from __future__ import division, print_function
 
 import numpy as np
+import time as _time
 import math
 from scipy.integrate import quad
 
@@ -100,9 +101,11 @@ def stellar_evolution(time, dt, se_restart_time, state, hydro, se,
     # Use evolve_model to evolve all stars at the same time
     # This allows us to restart from evolved stars and use the same structure for
     # binary evolution - CCC 26/04/2024
+    _t0 = _time.perf_counter()
     state.stars_to_se.copy()
     se.evolve_model(se_time)
     state.se_to_stars.copy()
+    _t1 = _time.perf_counter()
 
     # Reset the stars' age after the SE step, as the SeBa age is reset to 0
     # at each restart - CCC 22/11/2024
@@ -157,6 +160,7 @@ def stellar_evolution(time, dt, se_restart_time, state, hydro, se,
         if dm_dt[i]*dt > 0.0|units.MSun:
             s.mass = min(s.mass, old_mass[i] - dm_dt[i]*dt)
 
+    _t2 = _time.perf_counter()
     hydro.set_particle_mass(state.stars.tag, state.stars.mass)
 
     # TODO not sure if as_quantity_in(...) calls are actually needed.
@@ -179,7 +183,9 @@ def stellar_evolution(time, dt, se_restart_time, state, hydro, se,
     hydro.set_particle_corem(state.stars.tag, state.stars.core_mass)
     hydro.set_particle_radius(state.stars.tag, state.stars.radius)
     hydro.set_particle_stype(state.stars.tag, state.stars.stellar_type.value_in(units.stellar_type))
-    
+    # where the stellar-evolution step goes: SeBa itself, the per-star Python loop, the push to the hydro code
+    tprint("... se timing: n={} seba {:.3f}s loop {:.3f}s push {:.3f}s".format(
+        len(state.stars), _t1 - _t0, _t2 - _t1, _time.perf_counter() - _t2))
     return se_dt
 
 
