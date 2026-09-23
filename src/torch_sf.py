@@ -13,6 +13,7 @@ import numpy as np
 
 from amuse.datamodel import Particles
 from amuse.units import units
+from amuse.units.quantities import as_vector_quantity
 
 from torch_stdout import tprint
 from imf_sample import sample_stellar_mass
@@ -219,6 +220,22 @@ def remove_particles_outside_bndbox(overwrite, state, hydro, grav, mult, se):
     return
 
 
+def _sink_state(hydro, sink_tags):
+    """{tag: (mass, pos, vel, mean_cs)} for every sink in one call, when the
+    hydro code offers `get_sink_state` (LUNA); None otherwise (FLASH), and the
+    callers ask per sink as before. Same values either way: the per-sink loop
+    only changes the sink it is on, and the quantities are indexed, not
+    converted."""
+    try:
+        get = hydro.get_sink_state
+    except Exception:
+        return None
+    m, x, y, z, vx, vy, vz, cs = get(sink_tags)
+    return {tag: (m[i], as_vector_quantity([x[i], y[i], z[i]]),
+                  as_vector_quantity([vx[i], vy[i], vz[i]]), cs[i])
+            for i, tag in enumerate(sink_tags)}
+
+
 def queue_stars(state, hydro, min_imf_mass=None, max_imf_mass=None,
                 sample_imf_mass=10000|units.MSun, sum_small=False, m_small=1.0|units.MSun,
                 sample_imf_bins=10):
@@ -231,6 +248,7 @@ def queue_stars(state, hydro, min_imf_mass=None, max_imf_mass=None,
         return
 
     sink_tags = hydro.get_particle_tags(range(1,num_sinks+1))  # does not work with empty list
+    batch = _sink_state(hydro, sink_tags)
 
     # Josh wrote efficient code to update new sinks using cached, sorted list
     # of old sinks, which I (AT) removed for brevity.
@@ -241,7 +259,8 @@ def queue_stars(state, hydro, min_imf_mass=None, max_imf_mass=None,
             state.all_masses[sink_tag] = np.array([])
             tprint("... new sink tag {}".format(sink_tag))
 
-        while np.sum(state.all_masses[sink_tag]) | units.MSun <= hydro.get_particle_mass(sink_tag):
+        sink_mass = batch[sink_tag][0] if batch is not None else hydro.get_particle_mass(sink_tag)
+        while np.sum(state.all_masses[sink_tag]) | units.MSun <= sink_mass:
             new_masses = sample_stellar_mass(
                             sample_imf_mass.value_in(units.MSun),
                             num_bins=sample_imf_bins,
@@ -287,14 +306,18 @@ def make_stars_from_sinks(state, hydro, sink_rad=None):
 
     sink_tags = hydro.get_particle_tags(range(1,num_sinks+1))  # does not work with empty list
     sink_tags.sort()  # is this necessary?
+    batch = _sink_state(hydro, sink_tags)
 
     for sink_tag in sink_tags:
 
-        hydro.set_particle_pointers('sink')
-        sink_mass = hydro.get_particle_mass(sink_tag)
-        sink_pos = hydro.get_particle_position(sink_tag)
-        sink_vel = hydro.get_particle_velocity(sink_tag)
-        sink_cs  = hydro.get_sink_mean_cs(sink_tag)
+        if batch is not None:
+            sink_mass, sink_pos, sink_vel, sink_cs = batch[sink_tag]
+        else:
+            hydro.set_particle_pointers('sink')
+            sink_mass = hydro.get_particle_mass(sink_tag)
+            sink_pos = hydro.get_particle_position(sink_tag)
+            sink_vel = hydro.get_particle_velocity(sink_tag)
+            sink_cs  = hydro.get_sink_mean_cs(sink_tag)
 
         # get all the stars that we can form now
         csum = np.cumsum(state.all_masses[sink_tag])
@@ -329,6 +352,7 @@ def make_stars_from_sinks(state, hydro, sink_rad=None):
 
             # Remove the mass from the sink.
             sink_mass = sink_mass - (np.sum(spawn_masses)|units.MSun)
+            hydro.set_particle_pointers('sink')  # a previous sink's spawn left it on 'mass'
             hydro.set_particle_mass(sink_tag, sink_mass)
 
             star          = Particles(nnew)
