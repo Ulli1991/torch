@@ -450,15 +450,30 @@ def evolve(state, hydro, grav, mult, se):
         hydro.particles_sort()  # also checks for stars outside domain
 
         tprint("Star formation check")
-        queue_stars(state, hydro,
-            min_imf_mass=USER['min_imf_mass'],
-            max_imf_mass=USER['max_imf_mass'],
-            sample_imf_mass=USER['sample_imf_mass'],
-            sample_imf_bins=USER['sample_imf_bins'],
-            sum_small=USER['sum_small'],
-            m_small=USER['m_small']
-        )
-        made_stars = make_stars_from_sinks(state, hydro, sink_rad=USER['sink_rad'])  # in hydro
+        if USER.get('sf_in_hydro', False) and hasattr(hydro, 'form_stars'):
+            # the hydro code (LUNA) runs the same sink -> star rule itself, in
+            # one call; the new stars come back as new tags below
+            n_formed = hydro.form_stars(USER['sink_rad'], USER['min_imf_mass'],
+                                        USER['max_imf_mass'], USER['sample_imf_mass'],
+                                        USER['sample_imf_bins'], int(USER['sum_small']),
+                                        USER['m_small'])
+            made_stars = n_formed > 0
+            if made_stars:
+                tprint("... {} stars formed in the hydro code".format(n_formed))
+                if state.user['with_lyc'] or state.user['with_pe_heat']:
+                    new_tags = hydro.get_new_tags(range(1, n_formed + 1))
+                    hydro.set_particle_sigh(new_tags, np.ones(n_formed) * 3.0e-18 | units.cm * units.cm)
+                    hydro.set_particle_sigd(new_tags, np.ones(n_formed) * state.user['sigd'] | units.cm * units.cm)
+        else:
+            queue_stars(state, hydro,
+                min_imf_mass=USER['min_imf_mass'],
+                max_imf_mass=USER['max_imf_mass'],
+                sample_imf_mass=USER['sample_imf_mass'],
+                sample_imf_bins=USER['sample_imf_bins'],
+                sum_small=USER['sum_small'],
+                m_small=USER['m_small']
+            )
+            made_stars = make_stars_from_sinks(state, hydro, sink_rad=USER['sink_rad'])  # in hydro
         if made_stars:
             add_particles_to_grav(state, hydro, grav, mult, se)  # push stars hydro->amuse, hydro->grav
 
