@@ -217,6 +217,17 @@ def evolve(state, hydro, grav, mult, se):
     # TODO this really shuld be handled by HYDRO and not torch -AT, 2019Oct14
     se_dt = 1e99 | units.s
 
+    # Stellar evolution on its own cadence (USER['se_cadence'], 0 = every
+    # bridge step as always). The feedback rates SeBa sets are parked on the
+    # hydro particles and applied at every bridge step regardless, so between
+    # calls winds and photons keep flowing at the last rates; the mass lost
+    # to winds is taken off the star over the whole interval at the next call
+    # (stellar_evolution's dt). A star formed since the last call forces one,
+    # so a new star never waits for its feedback properties.
+    se_cadence = USER.get('se_cadence', 0.0 | units.s)
+    se_accum = 0.0 | units.s
+    se_force = True
+
     # bridge loop control
     it = 1
     dt = min(USER['hy_dt_factor']*hy_dt, se_dt, hy_max_time-hy_time)
@@ -318,11 +329,19 @@ def evolve(state, hydro, grav, mult, se):
             ### Stellar evolution.
             ### ------------------
 
+            se_due = False
             if USER['with_se']:
+                se_accum = se_accum + dt
+                se_due = se_force or se_cadence <= 0.0 | units.s or se_accum >= se_cadence
+                if not se_due:
+                    se_dt = 1e99 | units.s
+                    tprint("... stellar evolution deferred ({:.1f} of {:.1f} yr)".format(
+                        se_accum.value_in(units.yr), se_cadence.value_in(units.yr)))
+            if se_due:
                 tprint("Do stellar evolution")
                 # update both stars set and hydro properties
                 se_dt = stellar_evolution(
-                    hy_time+dt, dt, se_restart_time, state, hydro, se,
+                    hy_time+dt, se_accum, se_restart_time, state, hydro, se,
                     with_lyc          = USER['with_lyc'],
                     with_pe_heat      = USER['with_pe_heat'],
                     with_winds        = USER['with_winds'],
@@ -331,7 +350,9 @@ def evolve(state, hydro, grav, mult, se):
                     min_feedback_mass = USER['min_feedback_mass'],
                 )
                 tprint("... dt from stellar evol:", se_dt)  # IF we keep this python-level dt management, this probably should enter hydro dt right away... -AT, 2019 nov 26
-                
+                se_accum = 0.0 | units.s
+                se_force = False
+
                 # sync mass to gravity code(s) from stars
                 if num_stars > 1:
                     state.stars_to_grav.copy_attributes(["mass", "radius"])  # AMUSE -> grav singles
@@ -478,6 +499,7 @@ def evolve(state, hydro, grav, mult, se):
             )
             made_stars = make_stars_from_sinks(state, hydro, sink_rad=USER['sink_rad'])  # in hydro
         if made_stars:
+            se_force = True     # the next bridge step gives the new stars their SeBa state
             add_particles_to_grav(state, hydro, grav, mult, se)  # push stars hydro->amuse, hydro->grav
 
         ### ----------------------------
