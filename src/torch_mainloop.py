@@ -386,11 +386,14 @@ def evolve(state, hydro, grav, mult, se):
                     if USER['with_multiples']:
                         mult.evolve_model(hy_time+dt)
                     else:
+                        _t_par = time.time()
                         if USER['with_petar']:
                             grav.parameters.dt_soft = dt
                         start_t = time.time()
                         grav.evolve_model(hy_time+dt)
                         gr_evolve_time = time.time()-start_t
+                        tprint("... grav timing: set dt_soft {:.3f}s evolve {:.3f}s".format(
+                            start_t - _t_par, gr_evolve_time))
                     tprint("Advance hydro")
                     hydro.evolve_model(hy_time+dt)
 
