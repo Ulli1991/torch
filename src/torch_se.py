@@ -112,12 +112,12 @@ def stellar_evolution(time, dt, se_restart_time, state, hydro, se,
     state.stars.age = (time - dt) - hydro.get_particle_creation_time(state.stars.tag)
 
     # Indices of active feedback stars to evolve
-    #active_idx = np.argwhere(state.stars.initial_mass >= min_feedback_mass)
     # Loop only over active stars while retaining the correct indexing for total star array
-    for i, s in enumerate(state.stars):
-
-        if s.tag in remnants or s.initial_mass < min_feedback_mass:
-            continue
+    # (the test used to run inside a loop over every star: 32 ms a call for 2719 stars, 6 of them active)
+    active_idx = np.flatnonzero(~np.isin(np.asarray(state.stars.tag).ravel(), np.asarray(remnants).ravel())
+                                & (state.stars.initial_mass >= min_feedback_mass))
+    for i in active_idx:
+        s = state.stars[i]
 
         if with_sn and went_supernova(s.stellar_type):
 
@@ -187,6 +187,69 @@ def stellar_evolution(time, dt, se_restart_time, state, hydro, se,
     tprint("... se timing: n={} seba {:.3f}s loop {:.3f}s push {:.3f}s".format(
         len(state.stars), _t1 - _t0, _t2 - _t1, _time.perf_counter() - _t2))
     return se_dt
+
+
+def newborn_properties(state, hydro, se, new_tags,
+    with_lyc=True, with_pe_heat=True, with_winds=True,
+    massloss_method=None, min_feedback_mass=None):
+    """The stars formed since the last stellar-evolution step, and only them:
+    SeBa's state at their birth (no evolution: they are at age zero) and the
+    feedback properties it gives, pushed to the hydro code for their tags.
+
+    With `se_cadence` the rest of the stars keep their state until the next
+    cadence step. Running the full `stellar_evolution` for every star whenever
+    one is born made it run on nearly every bridge step while a cluster
+    forms: 0.165 s of a 0.27 s bridge step with 2400 stars (LUNA, 256^3). A
+    newborn's properties are the same either way; the others are advanced at
+    the cadence they would have been anyway.
+    """
+    assert massloss_method is not None
+    assert min_feedback_mass is not None
+    sel = np.isin(np.asarray(state.stars.tag).ravel(), np.asarray(new_tags).ravel())
+    sub = state.stars[sel]
+    if len(sub) == 0:
+        return
+    sub.get_intersecting_subset_in(se.particles).new_channel_to(sub).copy()
+    n = len(sub)
+    dm_dt   = np.zeros(n) | units.g / units.s
+    vterm   = np.zeros(n) | units.cm / units.s
+    nion    = np.zeros(n) | units.s**-1
+    eion    = np.zeros(n) | units.erg
+    sigh    = np.zeros(n) | units.cm**2
+    npe     = np.zeros(n) | units.s**-1
+    epe     = np.zeros(n) | units.erg
+    sigpe   = np.zeros(n) | units.cm**2
+    for i, s in enumerate(sub):
+        if s.initial_mass < min_feedback_mass:
+            continue
+        if with_lyc:
+            eion[i], nion[i], sigh[i] = compute_eion_nion_sigh(s.mass, s.temperature, s.radius)
+        if with_pe_heat:
+            epe[i], npe[i] = compute_epe_npe(s.temperature, s.radius)
+            sigpe[i] = sigDust
+        if with_winds:
+            # at birth nothing has been lost yet: the previous mass is the mass,
+            # and the step length only enters the 'seba' method (dm = 0 here)
+            dm_dt[i], vterm[i] = compute_dmdt_vterm(s.mass, s.temperature, s.radius, s.mass,
+                                                    s.luminosity, 1.0 | units.yr,
+                                                    massloss_method=massloss_method)
+    t = sub.tag
+    hydro.set_particle_mass(t, sub.mass)
+    hydro.set_particle_nion(t, nion)
+    hydro.set_particle_eion(t, eion.as_quantity_in(units.erg))
+    hydro.set_particle_sigh(t, sigh)
+    hydro.set_particle_npep(t, npe)
+    hydro.set_particle_epep(t, epe.as_quantity_in(units.erg))
+    hydro.set_particle_sigd(t, sigpe)
+    hydro.set_particle_wind_mass(t, dm_dt.as_quantity_in(units.g/units.s))
+    hydro.set_particle_wind_vel(t, vterm.as_quantity_in(units.cm/units.s))
+    hydro.set_particle_rel_mass(t, sub.relative_mass)
+    hydro.set_particle_rel_age(t, sub.relative_age)
+    hydro.set_particle_co_corem(t, sub.COcore_mass)
+    hydro.set_particle_corem(t, sub.core_mass)
+    hydro.set_particle_radius(t, sub.radius)
+    hydro.set_particle_stype(t, sub.stellar_type.value_in(units.stellar_type))
+    tprint("... newborn stellar properties: n={} of {}".format(n, len(state.stars)))
 
 
 def compute_dmdt_vterm(prev_mass, se_temp, se_radius, se_mass, se_lum, dt, massloss_method=None):

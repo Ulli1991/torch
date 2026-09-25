@@ -54,6 +54,7 @@ from amuse.lab import *
 
 from torch_se import (
     stellar_evolution,
+    newborn_properties,
     remove_merged_stars,
 )
 from torch_sf import (
@@ -330,13 +331,34 @@ def evolve(state, hydro, grav, mult, se):
             ### ------------------
 
             se_due = False
+            newborn = False
             if USER['with_se']:
                 se_accum = se_accum + dt
-                se_due = se_force or se_cadence <= 0.0 | units.s or se_accum >= se_cadence
+                se_due = se_cadence <= 0.0 | units.s or se_accum >= se_cadence
+                # stars born since the last step get their SeBa state now, alone;
+                # everyone else waits for the cadence (newborn_properties)
+                newborn = se_force and not se_due
                 if not se_due:
                     se_dt = 1e99 | units.s
                     tprint("... stellar evolution deferred ({:.1f} of {:.1f} yr)".format(
                         se_accum.value_in(units.yr), se_cadence.value_in(units.yr)))
+            if newborn:
+                known = getattr(state, "se_known_tags", set())
+                new_tags = [int(t) for t in np.asarray(state.stars.tag).ravel() if int(t) not in known]
+                newborn_properties(
+                    state, hydro, se, new_tags,
+                    with_lyc          = USER['with_lyc'],
+                    with_pe_heat      = USER['with_pe_heat'],
+                    with_winds        = USER['with_winds'],
+                    massloss_method   = USER['massloss_method'],
+                    min_feedback_mass = USER['min_feedback_mass'],
+                )
+                state.se_known_tags = known | set(new_tags)
+                se_force = False
+                if num_stars > 1:
+                    state.stars_to_grav.copy_attributes(["mass", "radius"])  # AMUSE -> grav singles
+                    if USER['with_multiples']:
+                        mult.channel_from_code_to_memory.copy()
             if se_due:
                 tprint("Do stellar evolution")
                 # update both stars set and hydro properties
@@ -352,6 +374,7 @@ def evolve(state, hydro, grav, mult, se):
                 tprint("... dt from stellar evol:", se_dt)  # IF we keep this python-level dt management, this probably should enter hydro dt right away... -AT, 2019 nov 26
                 se_accum = 0.0 | units.s
                 se_force = False
+                state.se_known_tags = set(int(t) for t in np.asarray(state.stars.tag).ravel())
 
                 # sync mass to gravity code(s) from stars
                 if num_stars > 1:
