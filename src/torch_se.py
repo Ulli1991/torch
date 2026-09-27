@@ -92,8 +92,11 @@ def stellar_evolution(time, dt, se_restart_time, state, hydro, se,
     # follow FLASH idiom; return dt after SN deposit
     se_dt = 1e99 | units.s
 
-    # Time since star formation or restart, to use for stellar evolution
-    se_time = time - max(se_restart_time, min(hydro.get_particle_creation_time(state.stars.tag)))
+    # SeBa's clock is the time since the run (re)started. It must not move back:
+    # SeBa ignores an evolve_model to an earlier time, so an origin that moves
+    # (the oldest star leaving) stalls every star. add_particles_to_grav brings
+    # SeBa to this clock before the first stars, so they start at age zero.
+    se_time = time - se_restart_time
 
     # make list of remnant stars so we don't explode them again
     remnants = state.stars.tag[went_supernova(state.stars.stellar_type)]
