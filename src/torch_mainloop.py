@@ -88,6 +88,23 @@ from voramr.voramr_mainloop import (
 from voramr.voramr_stdout import vprint
 
 
+_PETAR_TREE_STEP = {"k": None}
+
+
+def set_petar_tree_step(grav, dt):
+    """PeTar's tree step = the bridge interval dt (a power of two in kyr).
+
+    Handed over in N-body units (1 kyr exactly, see `convert`): through SI the
+    value comes out as 2^k(1 - 3e-16) and PeTar rounds it DOWN to the next
+    power of two -- two tree steps per bridge step. And only when it changes:
+    every assignment recommits PeTar's parameters (all changeover radii).
+    """
+    k = float(2.0 ** np.round(np.log2(dt.value_in(units.kyr))))
+    if _PETAR_TREE_STEP["k"] != k:
+        grav.parameters.dt_soft = k | nbody_system.time
+        _PETAR_TREE_STEP["k"] = k
+
+
 # ============================================================================
 # Multiples boilerplate - required as of Oct 2019, see AMUSE book.
 
@@ -410,7 +427,7 @@ def evolve(state, hydro, grav, mult, se):
                     else:
                         req_hydro = hydro.evolve_model.asynchronous(hy_time+dt)
                         if USER['with_petar']:
-                            grav.parameters.dt_soft = dt
+                            set_petar_tree_step(grav, dt)
                         dt_old = dt
                         req_grav = grav.evolve_model.asynchronous(hy_time+dt)
                         pool.add_request(req_hydro, handle_result, ["hydro", it])
@@ -433,7 +450,7 @@ def evolve(state, hydro, grav, mult, se):
                     else:
                         _t_par = time.time()
                         if USER['with_petar']:
-                            grav.parameters.dt_soft = dt
+                            set_petar_tree_step(grav, dt)
                         start_t = time.time()
                         grav.evolve_model(hy_time+dt)
                         gr_evolve_time = time.time()-start_t
