@@ -75,7 +75,10 @@ We understand that Torch builds on many different bits and pieces and that it ca
 hard to understand exactly what parts you used. Therefore, we encourage new users to
 reach out to any of our active developers, attend one of our meetings, and/or join our
 slack. We are a friendly group of people who get very happy when people outside the
-collaboration want to use our code!
+collaboration want to use our code! If you received significant assistance from one 
+of the active developers or active group meeting contributors, we encourage you to 
+consider whether authorship or acknowledgements would be the most appropriate way to 
+acknowledge their contributions.
 
 Credits
 =======
