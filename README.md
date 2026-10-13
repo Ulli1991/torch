@@ -8,7 +8,7 @@ and binary stars, stellar evolution and feedback, and collisional N-body dynamic
 
 See our [website][2] for more information.
 
-The current stable version is [Torch 2.2.3][3].  
+The current stable version is [Torch 2.2.4][3].  
 The stable versions of Torch live on the [main][4] branch, and ongoing development
 happens on the [develop][5] branch.
 
@@ -23,12 +23,12 @@ Developing and working with Torch
 Torch is an open-source code with a release brach [main][4] maintained by 
 [@torch-sf/teams/developers][17].
 
-Issue reports, enhancements, etc are very welcome.  We will do our best to address
+Issue reports and suggested enhancements are very welcome.  We will do our best to address
 issue reports, pull requests, and inquiries, but due to limited resources we cannot
 promise prompt replies.
 
 If you would like to help build Torch please reach out. We have weekly meetings to
-discuss progress, future plans on on-going research.
+discuss progress, future plans and ongoing research.
 
 Version philosophy
 ------------------------
@@ -117,7 +117,7 @@ Torch also acknowledges the contributions of everyone who helped build FLASH and
 
 [1]: https://www.amusecode.org/
 [2]: https://torch-sf.github.io/
-[3]: https://github.com/torch-sf/torch/releases/tag/torch-v2.2.3
+[3]: https://github.com/torch-sf/torch/releases/tag/torch-v2.2.4
 [4]: https://github.com/torch-sf/torch/tree/main
 [5]: https://github.com/torch-sf/torch/tree/develop
 [6]: https://torch-sf.github.io/docs/manual/Quickstart.html
