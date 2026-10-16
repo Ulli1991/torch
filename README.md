@@ -41,13 +41,13 @@ should be tagged with appropriate names for use in publications.
 
 AI policy
 ---------
-The [Torch developers’][17] team embraces the AI policies adopted by major peer-reviewed
+The [Torch developers’][17] team follows the AI policies adopted by major peer-reviewed
 journals and pre-print services; an example of such policies can be found [here][7] for
 the AAS journals. When applicable, individual members of the developers’ team further 
 abide by the AI use guidelines of their own institutions. All code in the main and
 develop branches is reviewed, tested, and merged directly by members of the
 [developers][17] team. The [developers][17] team consists of human researchers 
-with experience running and developing Torch code.
+with experience running and developing the Torch code.
 
 The statement above reflects the workflow of the [developers][17] team and
 our policy regarding code in the [main][4] and [develop][5] branches. Although the Torch
@@ -57,7 +57,7 @@ recommend that individual users adhere to these principles in their own work.
 Citing Torch
 -----------------------------
 Torch is an open source software and we strongly encourage new users to use and play
-with our code. If using Torch or any of our provided resources in work/research
+with our code. If you use the Torch code or any of our provided resources in research
 presented in publication, we ask that you cite the relevant papers.
 
 The original Torch papers are [Wall et al., 2019][8] and [Wall et al., 2020][9].
@@ -79,12 +79,12 @@ can be found in previous [Torch publications][18]. You are also welcome to ask c
 users or developers for advice.
 
 We always encourage new users to reach out to any of our active developers, 
-attend one of our meetings, and/or join our slack. We are a friendly 
-group of people who get very happy when people outside the
-collaboration want to use our code! If you received significant assistance from one 
-of the active developers or active group meeting contributors, we encourage you to 
-consider whether authorship or acknowledgements would be the most appropriate way to 
-acknowledge their contributions.
+attend one of our meetings, and/or join our Slack. We are a friendly 
+group of people who are quite happy when people outside the
+collaboration want to use our code! If you received significant assistance during work resulting in publication from one 
+of the active developers or group meeting contributors, we encourage you to 
+consider whether authorship or acknowledgement would be an appropriate way to 
+reflect their contributions.
 
 Credits
 =======
