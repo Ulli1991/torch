@@ -41,10 +41,10 @@ should be tagged with appropriate names for use in publications.
 
 AI policy
 ---------
-The [Torch developers’][17] team follows the AI policies adopted by major peer-reviewed
-journals and pre-print services; an example of such policies can be found [here][7] for
-the AAS journals. When applicable, individual members of the developers’ team further 
-abide by the AI use guidelines of their own institutions. All code in the main and
+The [Torch developers’][17] team proactively follows the AI policies adopted by major 
+peer-reviewed journals and pre-print services; an example of such policies can be found 
+[here][7] for the AAS journals. When applicable, individual members of the developers’ team 
+further abide by the AI use guidelines of their own institutions. All code in the main and
 develop branches is reviewed, tested, and merged directly by members of the
 [developers][17] team. The [developers][17] team consists of human researchers 
 with experience running and developing the Torch code.
@@ -81,10 +81,10 @@ users or developers for advice.
 We always encourage new users to reach out to any of our active developers, 
 attend one of our meetings, and/or join our Slack. We are a friendly 
 group of people who are quite happy when people outside the
-collaboration want to use our code! If you received significant assistance during work resulting in publication from one 
-of the active developers or group meeting contributors, we encourage you to 
-consider whether authorship or acknowledgement would be an appropriate way to 
-reflect their contributions.
+collaboration want to use our code! If you received significant assistance during work 
+resulting in publication from one of the active developers or group meeting contributors, 
+we encourage you to consider whether authorship or acknowledgement would be an appropriate 
+way to reflect their contributions.
 
 Credits
 =======
